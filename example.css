@@ -1,0 +1,114 @@
+/* Базовые настройки для всей страницы */
+body {
+    background-color: #121214;       /* Глубокий тёмный фон, менее контрастный, чем чисто чёрный */
+    color: #e2e8f0;                  /* Мягкий белый цвет для комфортного чтения */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 800px;                /* Ограничение ширины текста для удобства чтения */
+    margin: 0 auto;                  /* Центрирование контента на экране */
+    padding: 2rem 1rem;
+}
+
+/* Заголовки с акцентным цветом */
+h1, h2, h3, h4, h5, h6 {
+    color: #ffffff;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+h1 {
+    font-size: 2.25rem;
+    border-bottom: 2px solid #2d3748; /* Тонкая разделительная линия под главным заголовком */
+    padding-bottom: 0.5rem;
+}
+
+h2 {
+    font-size: 1.75rem;
+}
+
+/* Стилизация обычного текста и списков */
+p {
+    margin-bottom: 1.25rem;
+}
+
+ul, ol {
+    margin-bottom: 1.25rem;
+    padding-left: 1.5rem;
+}
+
+li {
+    margin-bottom: 0.5rem;
+}
+
+/* Оформление ссылок */
+a {
+    color: #63b3ed;                  /* Приятный голубой цвет, контрастирующий с тёмным фоном */
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: #90cdf4;                  /* Эффект при наведении */
+    text-decoration: underline;
+}
+
+/* Стили для таблиц */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2rem 0;
+    font-size: 0.95rem;
+    background-color: #1a1a1e;       /* Слегка более светлый фон для самой таблицы */
+    border-radius: 8px;
+    overflow: hidden;                /* Чтобы скругление углов работало корректно */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+th, td {
+    padding: 10px 14px;
+    text-align: left;
+}
+
+/* Шапка таблицы */
+th {
+    background-color: #2d3748;       /* Контрастный фон для заголовков столбцов */
+    color: #ffffff;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+}
+
+/* Разделительные линии между строками */
+tr {
+    border-bottom: 1px solid #2d3748;
+}
+
+/* Чередование цвета строк (зебра-эффект) для лучшей читаемости */
+tr:nth-child(even) {
+    background-color: #222227;
+}
+
+/* Подсветка строки при наведении мыши */
+tr:hover {
+    background-color: #2a2a30;
+}
+
+/* Оформление цитат (если они есть) */
+blockquote {
+    border-left: 4px solid #63b3ed;
+    margin: 1.5rem 0;
+    padding: 0.5rem 1rem;
+    background-color: #1a1a1e;
+    color: #a0aec0;
+    font-style: italic;
+}
+
+/* Стили для адаптивности таблиц на мобильных устройствах */
+@media (max-width: 600px) {
+    table {
+        display: block;
+        overflow-x: auto;            /* Появится горизонтальная прокрутка, если таблица не влезает */
+    }
+}
