@@ -27,9 +27,15 @@ def tag_open(tagname: str):
     return f'<{tagname}>'
 
 
-def tag(tagname: str, text: str, newlines: bool = False):
+def format_params(params: dict):
+    return ' '.join(f'{key}="{value}"' for key,value in params.items())
+
+
+def tag(tagname: str, text: str, newlines: bool = False, params: dict = None):
     sep = '\n' if newlines else ''
-    return f'<{tagname}>{sep}{text}{sep}</{tagname}>'
+    if params is None:
+        return f'<{tagname}>{sep}{text}{sep}</{tagname}>'
+    return f'<{tagname} {format_params(params)}>{sep}{text}{sep}</{tagname}>'
 
 
 def tag_close(tagname: str):
@@ -87,12 +93,27 @@ class Header(Paragraph):
 class Cell(Paragraph):
     color: str = ''
     alignment: str = ''
+    _background_color: str = ''
+
+    @property
+    def background_color(self):
+        return self._background_color
+
+    @background_color.setter
+    def background_color(self, value):
+        self._background_color = {
+            "green": "005121",
+            "yellow": "B1A749",
+            "red": "B12F11",
+        }.get(value) or value
 
     @staticmethod
     def FromText(text: str):
         return Cell(text)
 
     def __str__(self):
+        if self.background_color:
+            return tag('td', html.escape(self.text), params={"style": f"background-color: #{self.background_color};"})
         return tag('td', html.escape(self.text))
 
     @staticmethod
@@ -106,7 +127,8 @@ class Cell(Paragraph):
             "is_bold": self.is_bold,
             "color": self.color,
             "alignment": self.alignment,
-            "type": ReportElementType.CELL.value
+            "background_color": self.background_color,
+            "type": ReportElementType.CELL.value,
         }
 
     @staticmethod
@@ -116,6 +138,7 @@ class Cell(Paragraph):
             is_bold=j['is_bold'],
             text=j['text'],
             alignment=j['alignment'],
+            _background_color=j['background_color']
         )
 
 
@@ -251,6 +274,19 @@ while args:
         table: Table = report.ensure_table()
         row = scroll(args)
         table.append_row(row)
+
+    elif test_flag(arg, 'set-cell'):
+        table: Table = report.ensure_table()
+        if not table.body:
+            continue
+        i, value, *others = scroll(args)
+        table.body[-1][int(i)] = Cell.FromText(value)
+
+    elif test_flag(arg, 'style'):
+        table: Table = report.ensure_table()
+        col, action, arg, *others = scroll(args)
+        if action == 'color':
+            table.body[-1][int(col)].background_color = arg
 
     elif test_flag(arg, 'tweak-table'):
         table: Table = report.ensure_table()
