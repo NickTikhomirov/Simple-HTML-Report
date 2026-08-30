@@ -11,6 +11,7 @@ class ReportElementType(Enum):
     CELL = 'cell'
     PARAGRAPH = 'paragraph'
     HEADER = 'header'
+    CODE = 'code'
 
     @property
     def Type(self):
@@ -20,6 +21,7 @@ class ReportElementType(Enum):
             ReportElementType.CELL: Cell,
             ReportElementType.PARAGRAPH: Paragraph,
             ReportElementType.TABLE: Table,
+            ReportElementType.CODE: Code,
         }[self]
 
 
@@ -79,6 +81,27 @@ class Paragraph:
             is_bold=j['is_bold'],
             text=j['text'],
         )
+
+
+@dataclass
+class Code:
+    text: str
+
+    def __str__(self):
+        return tag('pre', tag('code', html.escape(self.text)))
+
+    def to_dict(self):
+        return {
+            "text": self.text,
+            "type": ReportElementType.CODE.value
+        }
+
+    @staticmethod
+    def FromDict(j: dict):
+        return Code(
+            text=j['text'],
+        )
+
 
 
 @dataclass
@@ -284,6 +307,12 @@ while args:
         css_file = args.pop()
         with open(css_file, 'r', encoding='utf-8') as f:
             report.css = ''.join(f)
+        scroll(args)
+
+    elif test_flag(arg, 'code'):
+        code_file = args.pop()
+        with open(code_file, 'r', encoding='utf-8') as f:
+            report.append(Code(''.join(f)))
         scroll(args)
 
     elif test_flag(arg, 'row'):
