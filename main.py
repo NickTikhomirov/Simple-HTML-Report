@@ -23,23 +23,39 @@ class ReportElementType(Enum):
         }[self]
 
 
-def tag_open(tagname: str):
-    return f'<{tagname}>'
-
 
 def format_params(params: dict):
+    """ format params for HTML tag """
     return ' '.join(f'{key}="{value}"' for key,value in params.items())
 
 
 def tag(tagname: str, text: str, newlines: bool = False, params: dict = None):
+    """ HTML tag """
     sep = '\n' if newlines else ''
     if params is None:
         return f'<{tagname}>{sep}{text}{sep}</{tagname}>'
     return f'<{tagname} {format_params(params)}>{sep}{text}{sep}</{tagname}>'
 
+def tag_open(tagname: str):
+    return f'<{tagname}>'
 
 def tag_close(tagname: str):
     return f'</{tagname}>'
+
+def wander_json_file(filename: str, keys: list[str]):
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            j = json.load(f)
+            for key in keys:
+                j = j[key]
+            is_simple_type = lambda x: type(x) in [bool, int, float, str]
+            if is_simple_type(j):
+                return str(j)
+            if type(j) == list and all(is_simple_type(i) for i in j):
+                return str(j)
+    except FileNotFoundError | KeyError | IndexError | TypeError | json.JSONDecodeError:
+        pass
+    return ''
 
 
 @dataclass
@@ -275,12 +291,17 @@ while args:
         row = scroll(args)
         table.append_row(row)
 
-    elif test_flag(arg, 'set-cell'):
+    elif suffix := test_flag(arg, 'set-cell'):
         table: Table = report.ensure_table()
         if not table.body:
             continue
         i, value, *others = scroll(args)
-        table.body[-1][int(i)] = Cell.FromText(value)
+        i = int(i)
+        if 'e' in suffix and table.body[-1][i].text:
+            continue
+        if 'j' in suffix:
+            value = wander_json_file(value, list(others))
+        table.body[-1][i].text = value
 
     elif test_flag(arg, 'style'):
         table: Table = report.ensure_table()
