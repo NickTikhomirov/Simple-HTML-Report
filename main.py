@@ -38,13 +38,17 @@ def tag(tagname: str, text: str, newlines: bool = False, params: dict = None):
         return f'<{tagname}>{sep}{text}{sep}</{tagname}>'
     return f'<{tagname} {format_params(params)}>{sep}{text}{sep}</{tagname}>'
 
+
 def tag_open(tagname: str):
     return f'<{tagname}>'
+
 
 def tag_close(tagname: str):
     return f'</{tagname}>'
 
+
 def wander_json_file(filename: str, keys: list[str]):
+    """ turns (file, ["metadata", "component", "name"]) into a object available under given path """
     try:
         with open(filename, 'r', encoding='utf-8') as f:
             j = json.load(f)
@@ -78,7 +82,7 @@ class Paragraph:
     @staticmethod
     def FromDict(j: dict):
         return Paragraph(
-            is_bold=j['is_bold'],
+            is_bold=j.get('is_bold') or False,
             text=j['text'],
         )
 
@@ -123,7 +127,7 @@ class Header(Paragraph):
     def FromDict(j: dict):
         return Header(
             level=j['level'],
-            is_bold=j['is_bold'],
+            is_bold=j.get('is_bold') or False,
             text=j['text'],
         )
 
@@ -173,11 +177,11 @@ class Cell(Paragraph):
     @staticmethod
     def FromDict(j: dict):
         return Cell(
-            color=j['color'],
-            is_bold=j['is_bold'],
+            color=j.get('color') or '',
+            is_bold=j.get('is_bold') or False,
             text=j['text'],
-            alignment=j['alignment'],
-            _background_color=j['background_color']
+            alignment=j.get('alignment') or '',
+            _background_color=j.get('background_color') or ''
         )
 
 
@@ -209,7 +213,7 @@ class Table:
     @staticmethod
     def FromDict(j: dict):
         return Table(
-            is_numerated=j['is_numerated'],
+            is_numerated=j.get('is_numerated') or False,
             body=from_dict(j['body'])
         )
 
@@ -246,7 +250,7 @@ class Report:
     @staticmethod
     def FromDict(j: dict):
         return Report(
-            css=j['css'],
+            css=j.get('css') or '',
             body=from_dict(j['body'])
         )
 
