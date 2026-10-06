@@ -3,6 +3,7 @@ import sys
 from enum import Enum
 import json
 import html
+import csv
 
 
 class ReportElementType(Enum):
@@ -235,8 +236,8 @@ class Report:
                 entry: Header
                 entry.level += new_zero
 
-    def ensure_table(self):
-        if not self.body or type(self.body[-1]) != Table:
+    def ensure_table(self, force_new: bool = False):
+        if not self.body or type(self.body[-1]) != Table or force_new:
             self.body.append(Table())
         return self.body[-1]
 
@@ -358,7 +359,19 @@ while args:
         secondary_report.reduce_headers(int(new))
         report.body += secondary_report.body
 
-    elif test_flag(arg, 'release') or test_flag(arg, 'render'):
+    elif (new := test_flag(arg, 'csv')) != '':
+        filename2, *others = scroll(args)
+        is_excel_mode = 'e' in new
+        encoding = 'cp1251' if is_excel_mode else 'utf-8'
+        with open(filename2, 'r', encoding=encoding) as f:
+            reader = csv.reader(f, delimiter=';' if is_excel_mode else ',', lineterminator='\n')
+            data = list(reader)
+        is_append_mode = 'a' in new
+        table: Table = report.ensure_table(force_new=not is_append_mode)
+        for row in data:
+            table.append_row(row)
+
+    elif test_flag(arg, 'release') or test_flag(arg, 'render') or test_flag(arg, 'print'):
         filename2, *others = scroll(args)
         with open(filename2, 'w', encoding='utf-8') as report_release_file:
             report_release_file.write(tag_open('html') + '\n')
