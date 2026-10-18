@@ -130,3 +130,63 @@ pre {
   overflow-x: auto;          /* Горизонтальный скролл, если код длинный */
   margin: 1em 0;             /* Отступы сверху и снизу блока */
 }
+
+
+/* Контейнер спойлера */
+details {
+  background-color: #151515;
+  border: 1px solid #2d2d35;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+
+
+/* Стили заголовка */
+summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #e2e8f0;
+  cursor: pointer;
+  list-style: none; /* Скрываем стандартную стрелку в Chrome/Firefox */
+  user-select: none;
+}
+
+/* Скрываем стандартную стрелку в Safari */
+summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Создаем свою кастомную стрелку */
+summary::after {
+  content: "➔";
+  display: inline-block;
+  color: #a0aec0;
+  transform: rotate(90deg); /* Поворачиваем изначально вниз или вбок, как вам нравится */
+  transition: transform 0.2s ease, color 0.2s ease;
+  font-size: 0.85em;
+}
+
+/* Изменение стрелки при наведении на заголовок */
+summary:hover::after {
+  color: #3182ce; /* Подсветка стрелки (например, синим) */
+}
+
+/* Анимация стрелки при раскрытии спойлера */
+details[open] summary::after {
+  transform: rotate(270deg); /* Разворачиваем стрелку вверх */
+  color: #3182ce;
+}
+
+/* Контент внутри спойлера */
+.spoiler-content {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #2d2d35;
+  color: #cbd5e0;
+  line-height: 1.6;
+}

@@ -13,6 +13,19 @@ $ ./main.py ./example.json -tweak-table enum -prefix% %header2 'This is header l
 $ ./main.py ./example.json -css ./example.css -render example.html
 ```
 
+### With environment variables
+
+Filename of report state can be stored to `SIMPLEHTML_STATE` env variable for brevity
+
+```shell
+$ export SIMPLEHTML_STATE=./example.json
+$ ./main.py -header1 'This is header' -par 'This is some text'
+$ ./main.py -row 'Cell1' 'Cell2' 'Cell3'
+$ ./main.py -row 'CellA' 'CellB' 'CellC' -row 'CellX' 'CellY' 'CellZ'
+$ ./main.py -tweak-table enum -prefix% %header2 'This is header level 2' %par 'This is some text'
+$ ./main.py -css ./example.css -render example.html
+```
+
 ## Supported flags
 
 ### `-headerI` flag
@@ -40,6 +53,10 @@ Signature:
 
 Applies modifications to table according to command (first arg):
 + `enum` -- adds leftmost column with numeration (N, 1, 2, 3...)
++ `spoiler` -- hides table to spoiler (second arg is used for spoiler's name, if present)
+
+### `-tweak-code` flag
++ `spoiler` -- hides code to spoiler (second arg is used for spoiler's name, if present)
 
 ### `-includeI` flag
 
@@ -70,5 +87,6 @@ python.exe .\main.py report.html -prefix+ +css .\example.css +header1 "This is h
 
 Signature:
 + suffix: a new prefix
-+ args: dropped
++ arg1: if equals to `fixed`, the prefix is stored to report state (json file) and re-applied in further invocations
++ arg2+: dropped
 

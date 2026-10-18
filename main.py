@@ -1,9 +1,14 @@
+#!/usr/bin/env python3
+
 from dataclasses import dataclass, field
 import sys
+import os
 from enum import Enum
 import json
 import html
 import csv
+
+ENVIRONMENT_NAME_STATE_FILE = 'SIMPLEHTML_STATE'
 
 
 class ReportElementType(Enum):
@@ -24,7 +29,6 @@ class ReportElementType(Enum):
             ReportElementType.TABLE: Table,
             ReportElementType.CODE: Code,
         }[self]
-
 
 
 def format_params(params: dict):
@@ -60,6 +64,7 @@ def wander_json_file(filename: str, keys: list[str]):
                 return str(j)
             if type(j) == list and all(is_simple_type(i) for i in j):
                 return str(j)
+            return json.dumps(j, ensure_ascii=False, indent=4)
     except FileNotFoundError | KeyError | IndexError | TypeError | json.JSONDecodeError:
         pass
     return ''
@@ -91,13 +96,22 @@ class Paragraph:
 @dataclass
 class Code:
     text: str
+    is_spoiler: bool = False
+    spoiler_name: str = ''
 
     def __str__(self):
-        return tag('pre', tag('code', html.escape(self.text)))
+        result = tag('pre', tag('code', html.escape(self.text)))
+        if self.is_spoiler:
+            if self.spoiler_name:
+                result = tag('summary', self.spoiler_name) + '\n' + result
+            result = tag('details', result)
+        return result
 
     def to_dict(self):
         return {
             "text": self.text,
+            "is_spoiler": self.is_spoiler,
+            "spoiler_name": self.spoiler_name,
             "type": ReportElementType.CODE.value
         }
 
@@ -105,8 +119,9 @@ class Code:
     def FromDict(j: dict):
         return Code(
             text=j['text'],
+            is_spoiler=j.get('is_spoiler') or False,
+            spoiler_name=j.get('spoiler_name') or '',
         )
-
 
 
 @dataclass
@@ -190,6 +205,8 @@ class Cell(Paragraph):
 class Table:
     body: list[list[Cell]] = field(default_factory=list)
     is_numerated: bool = False
+    is_spoiler: bool = False
+    spoiler_name: str = ''
 
     def append_row(self, row: list[str]):
         if self.body and (delta := len(self.body[0]) - len(row)) > 0:
@@ -202,12 +219,19 @@ class Table:
         else:
             numerate = lambda a: [tag('td', str(a[0] or 'N'))] + a[1]
             html_rows = list(map(Cell.RowToStr, map(numerate, enumerate(self.body))))
-        return tag('table', '\n'.join(html_rows), newlines=True)
+        result = tag('table', '\n'.join(html_rows), newlines=True)
+        if self.is_spoiler:
+            if self.spoiler_name:
+                result = tag('summary', self.spoiler_name) + '\n' + result
+            result = tag('details', result)
+        return result
 
     def to_dict(self):
         return {
             "is_numerated": self.is_numerated,
             "body": [list(map(Cell.to_dict, x)) for x in self.body],
+            "is_spoiler": self.is_spoiler,
+            "spoiler_name": self.spoiler_name,
             "type": ReportElementType.TABLE.value
         }
 
@@ -215,14 +239,17 @@ class Table:
     def FromDict(j: dict):
         return Table(
             is_numerated=j.get('is_numerated') or False,
-            body=from_dict(j['body'])
+            body=from_dict(j['body']),
+            is_spoiler=j.get('is_spoiler'),
+            spoiler_name=j.get('spoiler_name'),
         )
 
 
 @dataclass
 class Report:
-    body: list[Paragraph | Header | Table] = field(default_factory=list)
+    body: list[Paragraph | Header | Table | Code] = field(default_factory=list)
     css: str = ''
+    flag_handle: str = '-'
 
     def append(self, item):
         self.body.append(item)
@@ -245,6 +272,7 @@ class Report:
         return {
             "css": self.css,
             "body": [x.to_dict() for x in self.body],
+            'flag_handle': self.flag_handle,
             "type": ReportElementType.REPORT.value
         }
 
@@ -252,6 +280,7 @@ class Report:
     def FromDict(j: dict):
         return Report(
             css=j.get('css') or '',
+            flag_handle=j.get('flag_handle') or '-',
             body=from_dict(j['body'])
         )
 
@@ -262,13 +291,18 @@ def from_dict(j: dict | list):
     return ReportElementType(j['type']).Type.FromDict(j)
 
 
-FLAG_HANDLE = '-'
+FLAG_HANDLE = '-'  # session flag handle
 script_name, filename, *args = sys.argv
+if filename.startswith('-') or filename.startswith('%'):
+    args = [filename] + args
+    filename = os.environ[ENVIRONMENT_NAME_STATE_FILE]
 try:
     with open(filename, 'r', encoding='utf-8') as f:
         report: Report = from_dict(json.load(f))
+        FLAG_HANDLE = report.flag_handle
 except FileNotFoundError:
     report = Report()
+    report.flag_handle = '-'
 
 
 def test_flag(a: str, flag_prefix=''):
@@ -292,11 +326,14 @@ while args:
     arg: str = args.pop()
 
     if new := test_flag(arg, 'prefix'):
+        others = scroll(args)
         new = new.strip()
         FLAG_HANDLE = new
         if not new:
             ill = arg
             break
+        if 'fixed' in others:
+            report.flag_handle = FLAG_HANDLE
 
     elif new := test_flag(arg, 'header'):
         header_name = args.pop()
@@ -314,11 +351,15 @@ while args:
             report.css = ''.join(f)
         scroll(args)
 
-    elif test_flag(arg, 'code'):
-        code_file = args.pop()
-        with open(code_file, 'r', encoding='utf-8') as f:
-            report.append(Code(''.join(f)))
-        scroll(args)
+    elif suffix := test_flag(arg, 'code'):
+        code_file, *others = scroll(args)
+        if 'j' in suffix:  # json wander mode
+            code_as_text = wander_json_file(code_file, list(others))
+        else:
+            with open(code_file, 'r', encoding='utf-8') as f:
+                code_as_text = ''.join(f)
+        code = Code(code_as_text)
+        report.append(code)
 
     elif test_flag(arg, 'row'):
         table: Table = report.ensure_table()
@@ -343,14 +384,24 @@ while args:
         if action == 'color':
             table.body[-1][int(col)].background_color = arg
 
-    elif test_flag(arg, 'tweak-table'):
-        table: Table = report.ensure_table()
-        cmd = args.pop()
-        if cmd == 'enum':
-            table.is_numerated = True
-        scroll(args)
+    elif new := test_flag(arg, 'tweak'):
+        cmd, *others = scroll(args)
+        if new == '-table':
+            table: Table = report.ensure_table()
+            if cmd == 'enum':
+                table.is_numerated = True
+            elif cmd == 'spoiler':
+                table.is_spoiler = True
+                if others:
+                    table.spoiler_name = others[0]
+        elif new == '-code':
+            code: Code = report.body[-1]
+            if cmd == 'spoiler':
+                code.is_spoiler = True
+                if others:
+                    code.spoiler_name = others[0]
 
-    elif (new := test_flag(arg, 'include')) != '':
+    elif new := test_flag(arg, 'include'):
         if not new.isdecimal():
             new = 0
         filename2, *others = scroll(args)
@@ -389,6 +440,24 @@ while args:
             report_release_file.write(tag_close('body') + '\n')
             report_release_file.write(tag_close('html'))
             report_release_file.close()
+
+    elif new := test_flag(arg, 'terminateif'):
+        if new == 'eq':
+            arg1, arg2, *others = scroll(args)
+            if arg1 == arg2:
+                break
+        elif new == 'eqnt':
+            arg1, arg2, *others = scroll(args)
+            if arg1 != arg2:
+                break
+        else:
+            others = scroll(args)
+            if not others:
+                break
+            arg1, *others = others
+            arg1 = arg1.lower()
+            if arg1 not in ['0', 'false', '', 'no']:
+                break
 
 if ill:
     raise ValueError(f'Ill-formed argument: "{ill}"')
