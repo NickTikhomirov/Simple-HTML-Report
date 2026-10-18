@@ -65,7 +65,7 @@ def wander_json_file(filename: str, keys: list[str]):
             if type(j) == list and all(is_simple_type(i) for i in j):
                 return str(j)
             return json.dumps(j, ensure_ascii=False, indent=4)
-    except FileNotFoundError | KeyError | IndexError | TypeError | json.JSONDecodeError:
+    except (FileNotFoundError, KeyError, IndexError, TypeError, json.JSONDecodeError):
         pass
     return ''
 
@@ -322,6 +322,7 @@ def scroll(args_: list[str]):
 ill = ''
 args = list(reversed(args))
 scroll(args)
+PURE = False
 while args:
     arg: str = args.pop()
 
@@ -400,6 +401,22 @@ while args:
                 code.is_spoiler = True
                 if others:
                     code.spoiler_name = others[0]
+        elif new == '-json':
+            code: Code = report.body[-1]
+            try:
+                code_json_as_dict: dict | list = json.loads(code.text)
+                if type(code_json_as_dict) != dict:
+                    continue
+            except json.JSONDecodeError:
+                continue
+            allowed_x_denied = set(others)
+            cmd = cmd.lower()
+            if cmd == 'w':
+                code_json_as_dict = dict((k, v) for k, v in code_json_as_dict.items() if k in allowed_x_denied)
+                code.text = json.dumps(code_json_as_dict, ensure_ascii=True, indent=4)
+            elif cmd == 'b':
+                code_json_as_dict = dict((k, v) for k, v in code_json_as_dict.items() if k not in allowed_x_denied)
+                code.text = json.dumps(code_json_as_dict, ensure_ascii=True, indent=4)
 
     elif new := test_flag(arg, 'include'):
         if not new.isdecimal():
@@ -452,16 +469,20 @@ while args:
                 break
         else:
             others = scroll(args)
-            if not others:
-                break
-            arg1, *others = others
-            arg1 = arg1.lower()
-            if arg1 not in ['0', 'false', '', 'no']:
-                break
+            if others:
+                arg1, *others = others
+                arg1 = arg1.lower()
+                if arg1 not in ['0', 'false', '', 'no']:
+                    break
+
+    elif test_flag(arg, 'pure'):
+        PURE = True
+        scroll(args)
 
 if ill:
     raise ValueError(f'Ill-formed argument: "{ill}"')
 
-with open(filename, 'w', encoding='utf-8') as f:
-    json.dump(report.to_dict(), f, ensure_ascii=False, indent=4)
+if not PURE:
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(report.to_dict(), f, ensure_ascii=False, indent=4)
 

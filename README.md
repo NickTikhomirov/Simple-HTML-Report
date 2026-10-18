@@ -3,6 +3,8 @@
 
 This is a simple shell-friendly HTML report generator. It allows generating a simple (non-customizable) HTML report file with bash code.
 
+State filename cannot start with `-` or `%`.
+
 ## Example
 
 ```shell
@@ -58,6 +60,20 @@ Applies modifications to table according to command (first arg):
 ### `-tweak-code` flag
 + `spoiler` -- hides code to spoiler (second arg is used for spoiler's name, if present)
 
+### `-tweak-json` flag
+
+Can be applied if last component is `Code` with json text inside and the json top-level component is dict:
++ `w` filters dict in whitelist mode
++ `b` filters dict in blacklist mode
+
+For example, this code imports sbom root component as a code and removes `bom-ref` field from it:
+```shell
+$ python3 ./main.py root_of_sbom.json \
+  -codej sbom.json metadata component \
+  -tweak-code spoiler "This is root of our SBoM" \
+  -tweak-json b bom-ref 
+```
+
 ### `-includeI` flag
 
 Extends current state with contents of some other simple html report state.
@@ -89,4 +105,23 @@ Signature:
 + suffix: a new prefix
 + arg1: if equals to `fixed`, the prefix is stored to report state (json file) and re-applied in further invocations
 + arg2+: dropped
+
+### `-pure` flag
+
+Suppresses state printing (for one-liners or destructive operations).
+
+### `-terminateif` flag
+
+Flushes rest of the command line unless arg1 not in:
++ `0`
++ `false` (any case)
++ `no` (any case)
++ Empty line
+
+Without arguments: does nothing.
+
+### `-terminateifeq` and `-terminateifeqnt` flag
+
+Compare arg1 and arg2 and flush rest of the command line if they are equal (`-terminateifeq`) or not equal (`-terminateifeqnt`).
+
 
