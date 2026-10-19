@@ -44,6 +44,11 @@ def tag(tagname: str, text: str, newlines: bool = False, params: dict = None):
     return f'<{tagname} {format_params(params)}>{sep}{text}{sep}</{tagname}>'
 
 
+def select(list_: list, indexes: list[int]):
+    """Takes a subset of list indexes"""
+    return [v for i, v in enumerate(list_) if i in indexes]
+
+
 def tag_open(tagname: str):
     return f'<{tagname}>'
 
@@ -208,9 +213,19 @@ class Table:
     is_spoiler: bool = False
     spoiler_name: str = ''
 
+    @property
+    def width(self):
+        if self.body:
+            return len(self.body[0])
+        return 0
+
     def append_row(self, row: list[str]):
-        if self.body and (delta := len(self.body[0]) - len(row)) > 0:
-            row = row + [''] * delta
+        if self.width:
+            delta = self.width - len(row)
+            if delta > 0:
+                row = row + [''] * delta
+            elif delta < 0:
+                row = row[:self.width]
         self.body.append(list(map(Cell.FromText, row)))
 
     def __str__(self):
@@ -250,6 +265,7 @@ class Report:
     body: list[Paragraph | Header | Table | Code] = field(default_factory=list)
     css: str = ''
     flag_handle: str = '-'
+    remembered: str = ''
 
     def append(self, item):
         self.body.append(item)
@@ -273,6 +289,7 @@ class Report:
             "css": self.css,
             "body": [x.to_dict() for x in self.body],
             'flag_handle': self.flag_handle,
+            'remembered': self.remembered,
             "type": ReportElementType.REPORT.value
         }
 
@@ -281,6 +298,7 @@ class Report:
         return Report(
             css=j.get('css') or '',
             flag_handle=j.get('flag_handle') or '-',
+            remembered=j.get('remembered') or '',
             body=from_dict(j['body'])
         )
 
@@ -429,11 +447,14 @@ while args:
 
     elif (new := test_flag(arg, 'csv')) != '':
         filename2, *others = scroll(args)
+        subset = [int(i) for i in others if str(i).isdecimal()]
         is_excel_mode = 'e' in new
         encoding = 'cp1251' if is_excel_mode else 'utf-8'
         with open(filename2, 'r', encoding=encoding) as f:
             reader = csv.reader(f, delimiter=';' if is_excel_mode else ',', lineterminator='\n')
             data = list(reader)
+        if subset:
+            data = [select(line, subset) for line in data]
         is_append_mode = 'a' in new
         table: Table = report.ensure_table(force_new=not is_append_mode)
         for row in data:
@@ -458,6 +479,10 @@ while args:
             report_release_file.write(tag_close('html'))
             report_release_file.close()
 
+    elif new := test_flag(arg, 'remember'):
+        value, *others = scroll(args)
+        report.remembered = value
+
     elif new := test_flag(arg, 'terminateif'):
         if new == 'eq':
             arg1, arg2, *others = scroll(args)
@@ -466,6 +491,14 @@ while args:
         elif new == 'eqnt':
             arg1, arg2, *others = scroll(args)
             if arg1 != arg2:
+                break
+        elif new == 'memeq':
+            arg1, *others = scroll(args)
+            if arg1 == report.remembered:
+                break
+        elif new == 'memeqnt':
+            arg1, *others = scroll(args)
+            if arg1 != report.remembered:
                 break
         else:
             others = scroll(args)
@@ -478,6 +511,9 @@ while args:
     elif test_flag(arg, 'pure'):
         PURE = True
         scroll(args)
+
+    elif test_flag(arg, 'echo'):
+        print(scroll(args))
 
 if ill:
     raise ValueError(f'Ill-formed argument: "{ill}"')
