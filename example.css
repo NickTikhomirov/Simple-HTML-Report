@@ -6,6 +6,7 @@ body {
     line-height: 1.6;
     margin: 0 auto;                  /* Центрирование контента на экране */
     padding: 2rem 1rem;
+    display: flex; /* Позволяет расположить панель и контент в один ряд */
 }
 
 /* Заголовки с акцентным цветом */
@@ -190,3 +191,48 @@ details[open] summary::after {
   color: #cbd5e0;
   line-height: 1.6;
 }
+
+
+
+
+/* Стили для боковой панели */
+.sidebar {
+  height: 100vh;      /* Панель на всю высоту экрана */
+  width: 250px;       /* Фиксированная ширина панели */
+  background-color: #2c3e50; /* Темный цвет фона */
+  padding-top: 20px;
+  position: fixed;    /* Закрепляем панель при скролле */
+  left: 0;
+  top: 0;
+}
+
+/* Заголовок в меню */
+.sidebar h2 {
+  color: #fff;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+/* Стили для кнопок-ссылок */
+.sidebar a {
+  padding: 15px 25px;
+  text-decoration: none; /* Убираем подчеркивание ссылок */
+  font-size: 18px;
+  color: #bdc3c7;     /* Светло-серый цвет текста */
+  display: block;     /* Делаем ссылки во всю ширину панели */
+  transition: 0.3s;   /* Плавный переход цвета при наведении */
+}
+
+/* Эффект при наведении на кнопку */
+.sidebar a:hover {
+  color: #ffffff;
+  background-color: #34495e; /* Более светлый оттенок при наведении */
+}
+
+/* Стили для основного контента, чтобы он не перекрывался панелью */
+.content {
+  margin-left: 250px; /* Отступ равен ширине боковой панели */
+  padding: 20px;
+  flex-grow: 1;
+}
+

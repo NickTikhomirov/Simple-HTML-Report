@@ -7,6 +7,7 @@ from enum import Enum
 import json
 import html
 import csv
+from pathlib import Path
 
 ENVIRONMENT_NAME_STATE_FILE = 'SIMPLEHTML_STATE'
 
@@ -18,6 +19,7 @@ class ReportElementType(Enum):
     PARAGRAPH = 'paragraph'
     HEADER = 'header'
     CODE = 'code'
+    MENU_ENTRY = 'menu_entry'
 
     @property
     def Type(self):
@@ -28,6 +30,7 @@ class ReportElementType(Enum):
             ReportElementType.PARAGRAPH: Paragraph,
             ReportElementType.TABLE: Table,
             ReportElementType.CODE: Code,
+            ReportElementType.MENU_ENTRY: MenuEntry
         }[self]
 
 
@@ -73,6 +76,53 @@ def wander_json_file(filename: str, keys: list[str]):
     except (FileNotFoundError, KeyError, IndexError, TypeError, json.JSONDecodeError):
         pass
     return ''
+
+
+@dataclass
+class MenuEntry:
+    name: str
+    filename: str
+
+    def __str__(self):
+        visible_name = self.name or self.filename
+        return f'<a href={self.filename}>{visible_name}</a>'
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "filename": self.filename,
+            "type": ReportElementType.MENU_ENTRY.value
+        }
+
+    @staticmethod
+    def FromDict(j: dict):
+        return MenuEntry(
+            name=j.get('name') or '',
+            filename=j['filename'],
+        )
+
+    @staticmethod
+    def CleanName(name: str):
+        name = name.split('/')[-1]
+        name.strip('.')
+        return name
+
+    @staticmethod
+    def SetMenuEntriesToFile(fname: str, entries, css: str = ''):
+        entries: list[MenuEntry]
+        with open(fname, 'r', encoding='utf-8') as f:
+            j = json.load(f)
+        j['menu_entries'] = list(map(MenuEntry.to_dict, entries))
+        if css:
+            j['css'] = css
+        with open(fname, 'w', encoding='utf-8') as f:
+            json.dump(j,f)
+
+    @staticmethod
+    def GetNamesFromFile(fname: str):
+        with open(fname, 'r', encoding='utf-8') as f:
+            j = json.load(f)
+            return j.get('page_name'), j.get('file_name'), len(j.get('menu_entries') or [])
 
 
 @dataclass
@@ -266,6 +316,9 @@ class Report:
     css: str = ''
     flag_handle: str = '-'
     remembered: str = ''
+    menu_entries: list[MenuEntry] = field(default_factory=list)
+    page_name: str = ''
+    file_name: str = ''
 
     def append(self, item):
         self.body.append(item)
@@ -290,7 +343,10 @@ class Report:
             "body": [x.to_dict() for x in self.body],
             'flag_handle': self.flag_handle,
             'remembered': self.remembered,
-            "type": ReportElementType.REPORT.value
+            "type": ReportElementType.REPORT.value,
+            'menu_entries': [x.to_dict() for x in self.menu_entries],
+            'page_name': self.page_name,
+            'file_name': self.file_name
         }
 
     @staticmethod
@@ -299,8 +355,38 @@ class Report:
             css=j.get('css') or '',
             flag_handle=j.get('flag_handle') or '-',
             remembered=j.get('remembered') or '',
-            body=from_dict(j['body'])
+            body=from_dict(j['body']),
+            menu_entries=list(map(MenuEntry.FromDict, j.get('menu_entries') or [])),
+            page_name=j.get('page_name') or '',
+            file_name=j.get('file_name') or ''
         )
+
+    def print(self, file_object):
+        file_object.write(tag_open('html') + '\n')
+        file_object.write(tag_open('head') + '\n')
+        if self.css:
+            file_object.write(tag_open('style') + '\n')
+            file_object.write(self.css + '\n')
+            file_object.write(tag_close('style') + '\n')
+        file_object.write(tag_close('head') + '\n')
+        file_object.write(tag_open('body') + '\n')
+
+        if self.menu_entries:
+            file_object.write('<div class="sidebar">\n')
+            file_object.write('<h2>Меню</h2>\n')
+            for entry in self.menu_entries:
+                file_object.write(f'{entry}\n')
+            file_object.write('</div>')
+            file_object.write('<div class="content">')
+        else:
+            file_object.write('<div>')
+
+        for entry in self.to_text():
+            file_object.write(entry + '\n')
+
+        file_object.write('</div>')
+        file_object.write(tag_close('body') + '\n')
+        file_object.write(tag_close('html'))
 
 
 def from_dict(j: dict | list):
@@ -345,13 +431,12 @@ while args:
     arg: str = args.pop()
 
     if new := test_flag(arg, 'prefix'):
-        others = scroll(args)
         new = new.strip()
         FLAG_HANDLE = new
         if not new:
             ill = arg
             break
-        if 'fixed' in others:
+        if 'fixed' in scroll(args):
             report.flag_handle = FLAG_HANDLE
 
     elif new := test_flag(arg, 'header'):
@@ -461,23 +546,46 @@ while args:
             table.append_row(row)
 
     elif test_flag(arg, 'release') or test_flag(arg, 'render') or test_flag(arg, 'print'):
-        filename2, *others = scroll(args)
+        filename2, *others = scroll(args) + ['']
+        filename2 = filename2 or report.file_name
+        if not filename2:
+            continue
         with open(filename2, 'w', encoding='utf-8') as report_release_file:
-            report_release_file.write(tag_open('html') + '\n')
-            report_release_file.write(tag_open('head') + '\n')
-            if report.css:
-                report_release_file.write(tag_open('style') + '\n')
-                report_release_file.write(report.css + '\n')
-                report_release_file.write(tag_close('style') + '\n')
-            report_release_file.write(tag_close('head') + '\n')
-            report_release_file.write(tag_open('body') + '\n')
+            report.print(report_release_file)
 
-            for entry in report.to_text():
-                report_release_file.write(entry + '\n')
+    elif new := test_flag(arg, 'givename'):
+        others = scroll(args) + ['']
+        name, filename2, *others = others
+        filename2 = filename2 or name.replace(' ', '_')
+        report.page_name = name
+        report.file_name = filename2
 
-            report_release_file.write(tag_close('body') + '\n')
-            report_release_file.write(tag_close('html'))
-            report_release_file.close()
+    elif new := test_flag(arg, 'connect'):
+        if report.menu_entries and 'a' not in new:
+            continue
+        others = scroll(args)
+        if 's' not in new:
+            others = [path for path in others if Path(path).resolve(strict=False) != Path(filename).resolve(strict=False)]
+        menu = []
+        files = []
+        for path in others:
+            page_name, file_name, has_menu = MenuEntry.GetNamesFromFile(path)
+            if has_menu and 'o' not in new:
+                continue
+            menu.append(MenuEntry(page_name, file_name))
+            files.append(path)
+        menu = [MenuEntry(report.page_name, report.file_name)] + menu
+        report.menu_entries = menu
+        if '1' in new:
+            continue
+        if len(menu) == 1:
+            continue
+        for path in files:
+            MenuEntry.SetMenuEntriesToFile(path, menu, report.css if 'c' in new else '')
+
+    elif test_flag(arg, 'disconnect'):
+        others = scroll(args)
+        report.menu_entries = []
 
     elif new := test_flag(arg, 'remember'):
         value, *others = scroll(args)

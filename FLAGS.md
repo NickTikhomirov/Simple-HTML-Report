@@ -83,9 +83,49 @@ Signature:
 + arg1: css file to use
 + arg2+: dropped
 
+### `-render` flag (also known as `-print` and `-release`)
+
+Prints state to HTML file.
+
+Signature:
++ suffix: dropped
++ arg1: (optional) filename -- if not present, `-render` will use name from `-givename` flag
++ arg2+: dropped
+
+### `-givename` flag
+
+Gives a new name to the file to show in menu. Makes sense with `-connect`, but useless otherwise.
++ suffix: dropped
++ arg1: menu name
++ arg2: file name (affects `-render` and used in menu)
++ arg3+: dropped
+
+### `-connect` flag
+
+Connects multiple reports with menu. One must set their page names and file names with `-givename` beforehand.
+
+```
+! Affects multiple reports passed by name to the script with the flag.
+```
+
+Current state is always a top-most report and others reside below (so use `-connect` on title page).
+
++ suffix:
+  + `a` -- TODO
+  + `c` -- shares css of the state with all other reports
+  + `1` -- disable effects to other reports (only current file gets a menu)
+  + `o` -- overwrites menus of other states if present (`-connect` does nothing with such states without `-o`)
++ args: other reports to connect (will be changed)
+
+### `-disconnect` flag
+
+Resets menu (undoes `-connect` flag). Affects only one report, not all.
+
+Has no args nor suffixes.
+
 ## State management flags
 
-### `-includeI` flag
+### `-include` flag
 
 Extends current state with contents of some other simple html report state.
 Also, can reduce headers' levels -- f.e. `-include1 doc.json` includes `doc.json` while deepening its headers by 1.
@@ -98,7 +138,6 @@ Signature:
 ### `-pure` flag
 
 Suppresses state printing (for one-liners or destructive operations).
-
 
 ## Metaflags: syntax
 
